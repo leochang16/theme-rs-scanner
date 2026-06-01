@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+venv/
+# 本機隨手產生的報告(CI 產生的 docs/index.html 會另外 commit)
+/theme_rs_report.html

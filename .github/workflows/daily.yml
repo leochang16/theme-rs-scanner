@@ -1,0 +1,47 @@
+name: daily-rs-scan
+
+on:
+  schedule:
+    # 台灣早上 8:00 = UTC 00:00,每天執行。看的是美股「前一晚收盤」的最後交易日。
+    # 週末沒有新資料時,報告不會變化 → 工作流程會自動略過 commit(見下方步驟)。
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}   # 也可在 Actions 頁手動觸發
+
+# 允許工作流程把產生的報告 commit 回 repo
+permissions:
+  contents: write
+
+# 同時間只跑一個,避免 push 衝突
+concurrency:
+  group: daily-rs-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run scanner -> docs/index.html
+        run: python theme_rs_scanner.py --html docs/index.html
+
+      - name: Commit report if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          if git diff --cached --quiet; then
+            echo "報告無變化,略過 commit。"
+          else
+            git commit -m "chore: 每日 RS 報告 $(date -u +%Y-%m-%d)"
+            git push
+          fi
